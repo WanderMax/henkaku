@@ -31,6 +31,7 @@
 #define HENKAKU_SUPRX_FILE "ur0:tai/henkaku.suprx"
 #define HENKAKU_SKPRX_FILE "ur0:tai/henkaku.skprx"
 
+#undef LOG
 #if RELEASE
 #define LOG(...)
 #else
@@ -258,6 +259,8 @@ int download_file(const char *src, const char *dst) {
 		total_read += read;
 		draw_rect(cui_data.X + 1, cui_data.Y + 1, (PROGRESS_BAR_WIDTH - 2) * total_read / length, PROGRESS_BAR_HEIGHT - 2);
 	}
+	// ensure it's filled when file is downloaded
+	draw_rect(cui_data.X + 1, cui_data.Y + 1, (PROGRESS_BAR_WIDTH - 2), PROGRESS_BAR_HEIGHT - 2);
 	DRAWF("\n\n");
 
 end2:
@@ -466,27 +469,6 @@ static uint32_t crc32_file(const char *path) {
 	return crc;
 }
 
-static int find_NPXS10016_titleid_fsm(const char *data, int len, int state) {
-	int i = 0;
-	while (i < len) {
-		switch (state) {
-			case  0: state = (data[i++] == '*') ? 1 : 0; break;
-			case  1: state = (data[i++] == 'N') ? 2 : 0; break;
-			case  2: state = (data[i++] == 'P') ? 3 : 0; break;
-			case  3: state = (data[i++] == 'X') ? 4 : 0; break;
-			case  4: state = (data[i++] == 'S') ? 5 : 0; break;
-			case  5: state = (data[i++] == '1') ? 6 : 0; break;
-			case  6: state = (data[i++] == '0') ? 7 : 0; break;
-			case  7: state = (data[i++] == '0') ? 8 : 0; break;
-			case  8: state = (data[i++] == '1') ? 9 : 0; break;
-			case  9: state = (data[i++] == '6') ? 99 : 0; break;
-			case 99: state = (data[i++] == '\r' || data[i-1] == '\n') ? 100 : 0; break;
-			default: i++; break;
-		}
-	}
-	return state;
-}
-
 static int find_henkaku_plugin_fsm(const char *data, int len, int state) {
 	int i = 0;
 	while (i < len) {
@@ -645,7 +627,7 @@ static int load_paf() {
 	ptr[0] = 0;
 	ptr[1] = (unsigned)&ptr[0];
 	unsigned scepaf_argp[] = {0x400000, 0xEA60, 0x40000, 0, 0};
-	return sceSysmoduleLoadModuleInternalWithArg(SCE_SYSMODULE_PAF, sizeof(scepaf_argp), scepaf_argp, ptr);
+	return sceSysmoduleLoadModuleInternalWithArg(SCE_SYSMODULE_INTERNAL_PAF, sizeof(scepaf_argp), scepaf_argp, ptr);
 }
 
 static void init_modules() {
@@ -654,16 +636,16 @@ static void init_modules() {
 	void *base;
 
 	ret = load_paf();
-	LOG("SCE_SYSMODULE_PROMOTER_UTIL(SCE_SYSMODULE_PAF): %x\n", ret);
+	LOG("sceSysmoduleLoadModuleInternalWithArg(SCE_SYSMODULE_INTERNAL_PAF): %x\n", ret);
 
-	ret = sceSysmoduleLoadModuleInternal(SCE_SYSMODULE_PROMOTER_UTIL);
-	LOG("SCE_SYSMODULE_PROMOTER_UTIL(SCE_SYSMODULE_PROMOTER_UTIL): %x\n", ret);
+	ret = sceSysmoduleLoadModuleInternal(SCE_SYSMODULE_INTERNAL_PROMOTER_UTIL);
+	LOG("sceSysmoduleLoadModuleInternal(SCE_SYSMODULE_INTERNAL_PROMOTER_UTIL): %x\n", ret);
 
 	ret = sceSysmoduleLoadModuleInternal(SCE_SYSMODULE_NET);
-	LOG("SCE_SYSMODULE_PROMOTER_UTIL(SCE_SYSMODULE_NET): %x\n", ret);
+	LOG("sceSysmoduleLoadModuleInternal(SCE_SYSMODULE_NET): %x\n", ret);
 
 	ret = sceSysmoduleLoadModuleInternal(SCE_SYSMODULE_HTTP);
-	LOG("SCE_SYSMODULE_PROMOTER_UTIL(SCE_SYSMODULE_HTTP): %x\n", ret);
+	LOG("sceSysmoduleLoadModuleInternal(SCE_SYSMODULE_HTTP): %x\n", ret);
 
 	ret = sceHttpInit(1*1024*1024);
 	LOG("sceHttpInit(): %x\n", ret);
